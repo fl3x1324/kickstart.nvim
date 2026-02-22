@@ -91,7 +91,7 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true
 
 -- [[ Setting options ]]
 -- See `:help vim.o`
@@ -114,7 +114,8 @@ vim.o.showmode = false
 --  Schedule the setting after `UiEnter` because it can increase startup-time.
 --  Remove this option if you want your OS clipboard to remain independent.
 --  See `:help 'clipboard'`
-vim.schedule(function() vim.o.clipboard = 'unnamedplus' end)
+-- vim.schedule(function() vim.o.clipboard = 'unnamedplus' end)
+vim.g.clipboard = 'win32yank'
 
 -- Enable break indent
 vim.o.breakindent = true
@@ -603,6 +604,7 @@ require('lazy').setup({
         --
         -- But for many setups, the LSP (`ts_ls`) will work just fine
         -- ts_ls = {},
+        solidity = {},
       }
 
       -- Ensure the servers and tools above are installed
@@ -614,7 +616,7 @@ require('lazy').setup({
       -- You can press `g?` for help in this menu.
       local ensure_installed = vim.tbl_keys(servers or {})
       vim.list_extend(ensure_installed, {
-        'lua_ls', -- Lua Language server
+        'lua-language-server', -- Lua Language server
         'stylua', -- Used to format Lua code
         -- You can add other tools here that you want Mason to install
       })
@@ -908,6 +910,53 @@ require('lazy').setup({
     },
   },
 })
+
+vim.o.cmdheight = 1
+
+local rpc = require 'vim.lsp.rpc'
+
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'solidity',
+  callback = function(args)
+    local root = vim.fs.root(args.buf, {
+      '.git',
+      'foundry.toml',
+      'hardhat.config.js',
+      'hardhat.config.ts',
+      'tronbox.js',
+      'tronbox-config.js',
+    }) or vim.fn.getcwd()
+
+    vim.lsp.start {
+      name = 'solc-lsp',
+      cmd = { 'solc', '--lsp' },
+      root_dir = root,
+      flags = { debounce_text_changes = 500 },
+
+      on_error = function(code, err)
+        if code == rpc.client_errors.INVALID_SERVER_MESSAGE then return end
+        vim.lsp.rpc.client_errors[code](err)
+      end,
+    }
+  end,
+})
+
+vim.api.nvim_create_autocmd('CmdlineLeave', {
+  callback = function()
+    if type(vim.v.errmsg) == 'string' and vim.v.errmsg:match 'LSP%[solc%-lsp%]: Error INVALID_SERVER_MESSAGE' then
+      vim.schedule(function()
+        -- clears hit-enter prompt if it appeared
+        vim.api.nvim_feedkeys(vim.keycode '<CR>', 'n', false)
+      end)
+    end
+  end,
+})
+-- 1) Filter noisy server notifications (window/showMessage)
+local orig = vim.lsp.handlers['window/showMessage']
+vim.lsp.handlers['window/showMessage'] = function(err, params, ctx, config)
+  if params and params.message and params.message:match 'Parser returned null but did not report error' then return end
+  return orig(err, params, ctx, config)
+end
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
