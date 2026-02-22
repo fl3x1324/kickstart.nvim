@@ -593,6 +593,8 @@ require('lazy').setup({
       -- Enable the following language servers
       --  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
       --  See `:help lsp-config` for information about keys and how to configure
+      local mason_path = vim.fn.stdpath 'data' .. '/mason'
+      local lombok_jar = mason_path .. '/packages/jdtls/lombok.jar'
       local servers = {
         -- clangd = {},
         -- gopls = {},
@@ -604,7 +606,12 @@ require('lazy').setup({
         --
         -- But for many setups, the LSP (`ts_ls`) will work just fine
         -- ts_ls = {},
-        solidity = {},
+        jdtls = {
+          cmd = {
+            vim.fn.exepath 'jdtls',
+            '--jvm-arg=-javaagent:' .. lombok_jar,
+          },
+        },
       }
 
       -- Ensure the servers and tools above are installed
