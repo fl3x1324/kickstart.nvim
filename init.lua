@@ -605,7 +605,8 @@ require('lazy').setup({
         --    https://github.com/pmizio/typescript-tools.nvim
         --
         -- But for many setups, the LSP (`ts_ls`) will work just fine
-        -- ts_ls = {},
+        ts_ls = {},
+        eslint = {},
         jdtls = {
           cmd = {
             vim.fn.exepath 'jdtls',
@@ -621,7 +622,17 @@ require('lazy').setup({
       --    :Mason
       --
       -- You can press `g?` for help in this menu.
-      local ensure_installed = vim.tbl_keys(servers or {})
+      -- Mason package names don't always match lspconfig server names,
+      -- so we map the ones that differ here.
+      local lsp_to_mason = {
+        ts_ls = 'typescript-language-server',
+        eslint = 'eslint-lsp',
+      }
+
+      local ensure_installed = {}
+      for lsp_name, _ in pairs(servers) do
+        table.insert(ensure_installed, lsp_to_mason[lsp_name] or lsp_name)
+      end
       vim.list_extend(ensure_installed, {
         'lua-language-server', -- Lua Language server
         'stylua', -- Used to format Lua code
@@ -860,8 +871,9 @@ require('lazy').setup({
 
   { -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
+    branch = 'main',
     config = function()
-      local filetypes = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' }
+      local filetypes = { 'bash', 'c', 'diff', 'html', 'javascript', 'jsdoc', 'json', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'tsx', 'typescript', 'vim', 'vimdoc' }
       require('nvim-treesitter').install(filetypes)
       vim.api.nvim_create_autocmd('FileType', {
         pattern = filetypes,
